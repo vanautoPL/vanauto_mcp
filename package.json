@@ -1,0 +1,30 @@
+{
+  "name": "vanauto-mcp-campers",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Read-only MCP server for browsing VanAuto campers, rentals and marketplace listings via the public API.",
+  "type": "module",
+  "bin": {
+    "vanauto-campers-mcp": "./src/server.js"
+  },
+  "scripts": {
+    "start": "node ./src/server.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "node --check ./src/*.js",
+    "smoke": "node ./src/smoke-test.js",
+    "smoke:protocol": "node ./src/protocol-test.js",
+    "smoke:http": "node ./src/http-test.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.1",
+    "zod": "^4.6.5"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.3.1",
+    "wrangler": "^4.147.0"
+  }
+}

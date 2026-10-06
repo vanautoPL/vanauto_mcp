@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "vanauto-campers": {
+      "command": "node",
+      "args": ["/Users/dawidof/Sites/vanauto/mcp-campers/src/server.js"],
+      "env": {
+        "VANAUTO_API_URL": "https://api.vanauto.pl",
+        "VANAUTO_SITE_URL": "https://vanauto.pl"
+      }
+    }
+  }
+}
