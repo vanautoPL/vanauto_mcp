@@ -5,6 +5,7 @@ listings, rentals and marketplace (akcesoria) offers. It talks to the public
 VanAuto API, so it needs no credentials and cannot change any data.
 
 **Public endpoint:** `https://mcp.vanauto.pl/mcp` (Streamable HTTP, no auth)
+**MCP Registry:** [`pl.vanauto/campers`](https://registry.modelcontextprotocol.io/v0.1/servers?search=pl.vanauto/campers) — discoverable by registry-connected clients.
 
 ## Tools
 
@@ -119,6 +120,22 @@ Pushes to `main` deploy automatically via
 
 The workflow runs `npm run smoke:http` against `https://mcp.vanauto.pl/mcp`
 after each deploy.
+
+## MCP Registry
+
+The server is published to the official MCP Registry as `pl.vanauto/campers`
+(namespace verified via a DNS TXT record on `vanauto.pl`). To publish a new
+version after changing `server.json`:
+
+```sh
+# Signing key lives outside the repo, e.g. ~/.config/vanauto-mcp/registry-key.pem
+PRIVATE_KEY="$(openssl pkey -in ~/.config/vanauto-mcp/registry-key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n')"
+mcp-publisher login dns --domain vanauto.pl --private-key "$PRIVATE_KEY"
+mcp-publisher publish
+```
+
+Keep `version` in `server.json` in sync with `package.json`; the registry
+rejects duplicate versions.
 
 ## Behaviour notes
 
