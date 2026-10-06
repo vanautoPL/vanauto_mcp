@@ -74,13 +74,13 @@ Claude Desktop (older builds without native remote support):
 
 ### Local (stdio)
 
-Published on npm as **`vanauto-mcp-campers`**:
+The package is npm-ready as **`vanauto-mcp-campers`**. Once it is published:
 
 ```sh
 npx -y vanauto-mcp-campers
 ```
 
-Or run from a checkout with an absolute path to `src/server.js` (see
+Until then, run it from a checkout with an absolute path to `src/server.js` (see
 [`mcp.config.example.json`](./mcp.config.example.json)):
 
 ```json
