@@ -7,6 +7,7 @@
 
 import {
   analyzeCamperPrices,
+  fetchListingPhotos,
   findSimilarCampers,
   getCamperDetails,
   getMarketStats,
@@ -193,6 +194,16 @@ await check("search_wanted_ads", async () => {
   const result = await searchWantedAds({ perPage: 5 });
   assert(Array.isArray(result.results), "expected results array");
   return `${result.totalCount} wanted ads`;
+});
+
+await check("fetchListingPhotos (thumbnails as base64)", async () => {
+  assert(saleSlug, "no sale slug captured from search");
+  const details = await getCamperDetails({ slug: saleSlug, segment: "sale" });
+  const images = await fetchListingPhotos(details, { limit: 2 });
+  assert(images.length > 0, "expected at least one thumbnail");
+  assert(images[0].data.length > 1000, "expected non-trivial base64 payload");
+  assert(images[0].mimeType.startsWith("image/"), "expected an image mime type");
+  return `${images.length} thumbnails, ~${Math.round(images[0].data.length / 1024)} KB base64`;
 });
 
 console.log("");

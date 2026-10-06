@@ -17,6 +17,7 @@ import {
   SALE_SORTS,
   TRANSMISSIONS,
   analyzeCamperPrices,
+  fetchListingPhotos,
   findSimilarCampers,
   getCamperDetails,
   getMarketStats,
@@ -34,7 +35,7 @@ import {
 } from "./marketplace.js";
 
 export const SERVER_NAME = "vanauto-campers";
-export const SERVER_VERSION = "0.2.0";
+export const SERVER_VERSION = "0.3.0";
 
 const SORT_VALUES = [...new Set([...SALE_SORTS, ...RENTAL_SORTS])];
 
@@ -90,17 +91,39 @@ export function createServer() {
         "Get full details for one camper listing by slug (listing page id) or camper id (cam_...). " +
         'With a slug, searches sale listings first, then rentals; set segment to force "sale" or "rental". ' +
         "With camper_id, returns the camper spec sheet from the full catalog. Includes decoded specs, " +
-        "photos, equipment, contact details and the listing URL.",
+        "photo URLs, equipment, contact details and the listing URL. Set includePhotos to also attach " +
+        "actual camper photos as images so you can look at them.",
       inputSchema: z.object({
         slug: z.string().optional().describe("Listing slug from search results, e.g. citroen-jumper-ba12fa."),
         camperId: z.string().optional().describe("Camper public id, e.g. cam_4aJ62weNfqbS (from search results)."),
         segment: z.enum(["auto", "sale", "rental"]).default("auto").describe("Which listing space the slug belongs to."),
         includeDescription: z.boolean().default(true).describe("Include the listing description text."),
         maxDescriptionChars: z.number().int().min(0).max(20000).default(4000).describe("Description is truncated to this many characters."),
+        includePhotos: z.boolean().default(false).describe("Attach camper photos as images (400px thumbnails) the model can actually see."),
+        photoLimit: z.number().int().min(1).max(6).default(3).describe("How many photos to attach when includePhotos is true."),
       }),
       annotations: READ_ONLY,
     },
-    (args) => toolResult(() => getCamperDetails(args)),
+    async (args) => {
+      try {
+        const value = await getCamperDetails(args);
+        const content = [{ type: "text", text: JSON.stringify(value, null, 2) }];
+
+        if (args.includePhotos) {
+          const images = await fetchListingPhotos(value, { limit: args.photoLimit });
+          for (const image of images) {
+            content.push({ type: "image", data: image.data, mimeType: image.mimeType });
+          }
+        }
+
+        return { content };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: error instanceof Error ? error.message : String(error) }],
+        };
+      }
+    },
   );
 
   server.registerTool(

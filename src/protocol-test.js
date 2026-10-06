@@ -114,6 +114,17 @@ try {
   assert(detailPayload.camper?.id, "expected camper details");
   console.log(`ok   tools/call get_camper_details - camper ${detailPayload.camper.id}`);
 
+  const withPhotos = await request("tools/call", {
+    name: "get_camper_details",
+    arguments: { slug: payload.results[0].slug, segment: "sale", includePhotos: true, photoLimit: 2, maxDescriptionChars: 100 },
+  });
+  assert(withPhotos.result && !withPhotos.result.isError, `get_camper_details (photos) failed: ${withPhotos.result?.content?.[0]?.text}`);
+  const imageBlocks = (withPhotos.result.content ?? []).filter((block) => block.type === "image");
+  assert(imageBlocks.length > 0, "expected image content blocks");
+  assert(imageBlocks[0].mimeType.startsWith("image/"), "expected an image mime type");
+  assert(imageBlocks[0].data.length > 1000, "expected non-trivial base64 payload");
+  console.log(`ok   tools/call get_camper_details + photos - ${imageBlocks.length} image(s)`);
+
   const stats = await request("tools/call", { name: "get_camper_market_stats", arguments: {} });
   assert(stats.result && !stats.result.isError, `get_camper_market_stats failed: ${stats.result?.content?.[0]?.text}`);
   console.log(`ok   tools/call get_camper_market_stats - ${JSON.parse(stats.result.content[0].text).activeSaleListings} active sale listings`);

@@ -13,7 +13,7 @@ VanAuto API, so it needs no credentials and cannot change any data.
 | Tool | What it does |
 |---|---|
 | `search_campers` | Search active sale or rental listings with filters: text, make, model, camper type, fuel, gearbox, state, price, year, mileage, sleeping places, city; rentals also support availability dates. |
-| `get_camper_details` | Full details for one listing by slug (auto-detects sale vs rental) or a camper spec sheet by `cam_...` id: decoded specs, photos, equipment, contact and links. |
+| `get_camper_details` | Full details for one listing by slug (auto-detects sale vs rental) or a camper spec sheet by `cam_...` id: decoded specs, photos, equipment, contact and links. `includePhotos` attaches 400px thumbnails as real images so multimodal models can look at them. |
 | `analyze_camper_prices` | Market price stats for a cohort (min/max/avg/median/p25/p75, average by year) and, optionally, how one listing compares (percentile, deviation from median). |
 | `find_similar_campers` | Alternatives the platform suggests for a sale listing. |
 | `list_camper_makes` | All 200+ camper makes with active sale/rental counts, for resolving brand names. |
@@ -170,5 +170,8 @@ rejects duplicate versions.
   (`page`, `perPage`).
 - **Truncation.** Long listing descriptions are trimmed (default 4000 chars,
   `maxDescriptionChars` to change), so one call cannot flood a model's context.
+- **Photos.** Photo URLs are always included; `includePhotos` additionally
+  attaches up to 6 (default 3) 400px WebP thumbnails (~25 KB each) as MCP image
+  content for multimodal models.
 - Tool failures come back as `isError` results with a readable message, e.g. a
   missing slug reports "No active sale or rental listing found with slug ...".

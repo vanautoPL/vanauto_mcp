@@ -341,6 +341,74 @@ export async function getRentalReviews({ rentalListingId, limit = 20 } = {}) {
   };
 }
 
+// Fetches camper thumbnails as base64 payloads for MCP image content blocks.
+// Thumbnails (400px WebP, ~25 KB each) keep tool results small enough for chat
+// clients; the full-size URLs stay in the JSON payload. A broken or oversized
+// photo is skipped rather than failing the tool call.
+export async function fetchListingPhotos(detail, { limit = 3 } = {}) {
+  const photos = (detail?.camper?.photos ?? []).slice(0, limit);
+  const images = [];
+
+  for (const photo of photos) {
+    const url = photoThumbUrl(photo);
+    if (!url) continue;
+
+    try {
+      const response = await fetchWithTimeout(url, 10_000);
+      if (!response.ok) continue;
+
+      const mimeType = (response.headers.get("content-type") ?? "image/webp").split(";")[0].trim();
+      if (!mimeType.startsWith("image/")) continue;
+
+      const buffer = await response.arrayBuffer();
+      if (buffer.byteLength === 0 || buffer.byteLength > MAX_PHOTO_BYTES) continue;
+
+      images.push({ url, mimeType, data: toBase64(buffer) });
+    } catch {
+      // Photo attachments are best-effort; never fail the tool call for one.
+    }
+  }
+
+  return images;
+}
+
+const MAX_PHOTO_BYTES = 400 * 1024;
+
+function photoThumbUrl(photo) {
+  const url = photo?.url;
+  if (typeof url === "string" && url.includes("-large.webp")) {
+    return url.replace("-large.webp", "-thumb.webp");
+  }
+
+  return photo?.legacyJpegUrl ?? url ?? null;
+}
+
+async function fetchWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      headers: { accept: "image/webp,image/jpeg,image/*" },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function toBase64(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = "";
+  const chunkSize = 0x8000;
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+
+  return btoa(binary);
+}
+
 async function fetchSaleListings(filters, maxRows) {
   const rows = [];
   let after;
