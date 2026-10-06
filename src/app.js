@@ -35,17 +35,39 @@ import {
 } from "./marketplace.js";
 
 export const SERVER_NAME = "vanauto-campers";
-export const SERVER_VERSION = "0.3.1";
+export const SERVER_VERSION = "0.4.0";
 
 const SORT_VALUES = [...new Set([...SALE_SORTS, ...RENTAL_SORTS])];
 
 const READ_ONLY = { readOnlyHint: true, idempotentHint: true, openWorldHint: true };
 
-export function createServer() {
+export function createServer({ onToolCall } = {}) {
   const server = new McpServer(
     { name: SERVER_NAME, version: SERVER_VERSION },
     { capabilities: { tools: {} } },
   );
+
+  // Wraps a tool handler so every call produces one usage event. Analytics is
+  // best-effort: a logging failure must never change the tool result.
+  const withUsageLog = (toolName, handler) => async (args) => {
+    const startedAt = Date.now();
+    try {
+      const result = await handler(args);
+      safeLog({ tool: toolName, args, ok: !result?.isError, durationMs: Date.now() - startedAt });
+      return result;
+    } catch (error) {
+      safeLog({ tool: toolName, args, ok: false, durationMs: Date.now() - startedAt });
+      throw error;
+    }
+  };
+
+  const safeLog = (event) => {
+    try {
+      onToolCall?.(event);
+    } catch {
+      // Never let analytics break a response.
+    }
+  };
 
   server.registerTool(
     "search_campers",
@@ -80,7 +102,7 @@ export function createServer() {
       }),
       annotations: READ_ONLY,
     },
-    (args) => toolResult(() => searchCampers(args)),
+    withUsageLog("search_campers", (args) => toolResult(() => searchCampers(args))),
   );
 
   server.registerTool(
@@ -104,7 +126,7 @@ export function createServer() {
       }),
       annotations: READ_ONLY,
     },
-    async (args) => {
+    withUsageLog("get_camper_details", async (args) => {
       try {
         const value = await getCamperDetails(args);
         const content = [{ type: "text", text: JSON.stringify(value, null, 2) }];
@@ -123,7 +145,7 @@ export function createServer() {
           content: [{ type: "text", text: error instanceof Error ? error.message : String(error) }],
         };
       }
-    },
+    }),
   );
 
   server.registerTool(
@@ -139,7 +161,7 @@ export function createServer() {
       }),
       annotations: READ_ONLY,
     },
-    (args) => toolResult(() => listMakes(args)),
+    withUsageLog("list_camper_makes", (args) => toolResult(() => listMakes(args))),
   );
 
   server.registerTool(
@@ -152,7 +174,7 @@ export function createServer() {
       inputSchema: z.object({}),
       annotations: READ_ONLY,
     },
-    () => toolResult(() => listEquipment()),
+    withUsageLog("list_camper_equipment", () => toolResult(() => listEquipment())),
   );
 
   server.registerTool(
@@ -165,7 +187,7 @@ export function createServer() {
       inputSchema: z.object({}),
       annotations: READ_ONLY,
     },
-    () => toolResult(() => getMarketStats()),
+    withUsageLog("get_camper_market_stats", () => toolResult(() => getMarketStats())),
   );
 
   server.registerTool(
@@ -193,7 +215,7 @@ export function createServer() {
       }),
       annotations: READ_ONLY,
     },
-    (args) => toolResult(() => analyzeCamperPrices(args)),
+    withUsageLog("analyze_camper_prices", (args) => toolResult(() => analyzeCamperPrices(args))),
   );
 
   server.registerTool(
@@ -209,7 +231,7 @@ export function createServer() {
       }),
       annotations: READ_ONLY,
     },
-    (args) => toolResult(() => findSimilarCampers(args)),
+    withUsageLog("find_similar_campers", (args) => toolResult(() => findSimilarCampers(args))),
   );
 
   server.registerTool(
@@ -225,7 +247,7 @@ export function createServer() {
       }),
       annotations: READ_ONLY,
     },
-    (args) => toolResult(() => getRentalReviews(args)),
+    withUsageLog("get_rental_reviews", (args) => toolResult(() => getRentalReviews(args))),
   );
 
   server.registerTool(
@@ -251,7 +273,7 @@ export function createServer() {
       }),
       annotations: READ_ONLY,
     },
-    (args) => toolResult(() => searchMarketplaceListings(args)),
+    withUsageLog("search_marketplace_listings", (args) => toolResult(() => searchMarketplaceListings(args))),
   );
 
   server.registerTool(
@@ -269,7 +291,7 @@ export function createServer() {
       }),
       annotations: READ_ONLY,
     },
-    (args) => toolResult(() => getMarketplaceListingDetails(args)),
+    withUsageLog("get_marketplace_listing_details", (args) => toolResult(() => getMarketplaceListingDetails(args))),
   );
 
   server.registerTool(
@@ -285,7 +307,7 @@ export function createServer() {
       }),
       annotations: READ_ONLY,
     },
-    (args) => toolResult(() => getMarketplaceSeller(args)),
+    withUsageLog("get_marketplace_seller", (args) => toolResult(() => getMarketplaceSeller(args))),
   );
 
   server.registerTool(
@@ -304,7 +326,7 @@ export function createServer() {
       }),
       annotations: READ_ONLY,
     },
-    (args) => toolResult(() => searchWantedAds(args)),
+    withUsageLog("search_wanted_ads", (args) => toolResult(() => searchWantedAds(args))),
   );
 
   registerPrompts(server);

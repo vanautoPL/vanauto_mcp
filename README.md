@@ -74,7 +74,13 @@ Claude Desktop (older builds without native remote support):
 
 ### Local (stdio)
 
-Use an absolute path to `src/server.js` (see
+Published on npm as **`vanauto-mcp-campers`**:
+
+```sh
+npx -y vanauto-mcp-campers
+```
+
+Or run from a checkout with an absolute path to `src/server.js` (see
 [`mcp.config.example.json`](./mcp.config.example.json)):
 
 ```json
@@ -114,6 +120,7 @@ npm run check            # syntax check
 npm run smoke            # live tool checks against the configured API
 npm run smoke:protocol   # MCP handshake + tools/list + tools/call over stdio
 npm run smoke:http       # same over HTTP: MCP_URL=https://mcp.vanauto.pl/mcp npm run smoke:http
+npm run usage:report     # anonymous tool-usage report from D1 (last 30 days)
 ```
 
 ## Deployment
@@ -153,6 +160,24 @@ mcp-publisher publish
 
 Keep `version` in `server.json` in sync with `package.json`; the registry
 rejects duplicate versions.
+
+## Usage analytics
+
+The deployed Worker writes one anonymous row per tool call to Cloudflare D1
+(`tool_events`): tool name, sanitized and truncated arguments, ok/error,
+duration, and a coarse client family parsed from the user agent (chatgpt,
+claude, opencode, ...). **No IP addresses, tokens or user identifiers are
+stored.**
+
+```sh
+npm run usage:report             # last 30 days
+npm run usage:report -- --days 7
+```
+
+The report shows call counts per tool, client families, rental vs sale
+searches, and the most requested phrases, makes and camper types — useful
+market signal for what buyers ask AI about. Locally, `wrangler dev` writes
+events to a local database instead of the live one.
 
 ## Behaviour notes
 

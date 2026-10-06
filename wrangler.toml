@@ -25,3 +25,12 @@ VANAUTO_SITE_URL = "https://vanauto.pl"
 [[routes]]
 pattern = "mcp.vanauto.pl"
 custom_domain = true
+
+# Anonymous tool-usage analytics (tool name, sanitized filters, ok/error,
+# client family). No IP addresses or identifiers are stored. Schema lives in
+# migrations/0001_tool_events.sql. `wrangler dev` writes to a local copy; the
+# deployed Worker writes to the real database.
+[[d1_databases]]
+binding = "USAGE_DB"
+database_name = "vanauto-mcp-usage"
+database_id = "d59b28af-295b-4756-b942-ac7765e8ffe9"

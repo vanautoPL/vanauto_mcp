@@ -3,7 +3,7 @@
   "name": "pl.vanauto/campers",
   "title": "VanAuto Campers",
   "description": "Search VanAuto camper and rental listings: specs, photos, prices, equipment, contacts.",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "repository": {
     "url": "https://github.com/vanautoPL/vanauto_mcp",
     "source": "github"

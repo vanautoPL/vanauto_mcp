@@ -1,21 +1,47 @@
 {
   "name": "vanauto-mcp-campers",
-  "version": "0.3.1",
-  "private": true,
-  "description": "Read-only MCP server for browsing VanAuto campers, rentals and marketplace listings via the public API.",
+  "version": "0.4.0",
+  "mcpName": "pl.vanauto/campers",
+  "description": "Read-only MCP server for VanAuto (vanauto.pl): search camper sale and rental listings, view specs and photos, compare prices, explore marketplace accessories.",
   "type": "module",
   "bin": {
     "vanauto-campers-mcp": "./src/server.js"
   },
+  "files": [
+    "src/api-client.js",
+    "src/app.js",
+    "src/campers.js",
+    "src/formatters.js",
+    "src/marketplace.js",
+    "src/server.js",
+    "README.md"
+  ],
   "scripts": {
     "start": "node ./src/server.js",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "check": "node --check ./src/*.js",
+    "check": "node --check ./src/*.js && node --check ./scripts/*.mjs",
     "smoke": "node ./src/smoke-test.js",
     "smoke:protocol": "node ./src/protocol-test.js",
-    "smoke:http": "node ./src/http-test.js"
+    "smoke:http": "node ./src/http-test.js",
+    "usage:report": "node ./scripts/usage-report.mjs"
   },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "campers",
+    "motorhome",
+    "caravan",
+    "vanauto",
+    "poland"
+  ],
+  "homepage": "https://vanauto.pl/mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vanautoPL/vanauto_mcp.git"
+  },
+  "author": "VanAuto",
   "dependencies": {
     "@modelcontextprotocol/server": "^2.3.1",
     "zod": "^4.6.5"
