@@ -1,6 +1,6 @@
 {
   "name": "vanauto-mcp-campers",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Read-only MCP server for browsing VanAuto campers, rentals and marketplace listings via the public API.",
   "type": "module",

@@ -35,7 +35,7 @@ import {
 } from "./marketplace.js";
 
 export const SERVER_NAME = "vanauto-campers";
-export const SERVER_VERSION = "0.3.0";
+export const SERVER_VERSION = "0.3.1";
 
 const SORT_VALUES = [...new Set([...SALE_SORTS, ...RENTAL_SORTS])];
 
