@@ -26,4 +26,13 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
       - name: Verify the deployed endpoint
-        run: MCP_URL=https://mcp.vanauto.pl/mcp npm run smoke:http
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if MCP_URL=https://mcp.vanauto.pl/mcp npm run smoke:http; then
+              exit 0
+            fi
+            echo "verification attempt $attempt failed; waiting for edge propagation..."
+            sleep 20
+          done
+          echo "verification failed after 5 attempts" >&2
+          exit 1
