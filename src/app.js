@@ -16,16 +16,25 @@ import {
   RENTAL_SORTS,
   SALE_SORTS,
   TRANSMISSIONS,
+  analyzeCamperPrices,
+  findSimilarCampers,
   getCamperDetails,
   getMarketStats,
+  getRentalReviews,
   listEquipment,
   listMakes,
   searchCampers,
 } from "./campers.js";
-import { MARKETPLACE_CONDITIONS, getMarketplaceListingDetails, searchMarketplaceListings } from "./marketplace.js";
+import {
+  MARKETPLACE_CONDITIONS,
+  getMarketplaceListingDetails,
+  getMarketplaceSeller,
+  searchMarketplaceListings,
+  searchWantedAds,
+} from "./marketplace.js";
 
 export const SERVER_NAME = "vanauto-campers";
-export const SERVER_VERSION = "0.1.0";
+export const SERVER_VERSION = "0.2.0";
 
 const SORT_VALUES = [...new Set([...SALE_SORTS, ...RENTAL_SORTS])];
 
@@ -137,6 +146,66 @@ export function createServer() {
   );
 
   server.registerTool(
+    "analyze_camper_prices",
+    {
+      title: "Analyze camper prices",
+      description:
+        "Market price statistics for a cohort of active sale listings: min, max, average, median, " +
+        "p25/p75 and counts, plus average price by production year. Optionally pass a listing slug " +
+        "(slug) to see how that listing compares to the cohort (percentile and deviation from median). " +
+        "Use this to answer \"is this a good price?\".",
+      inputSchema: z.object({
+        make: z.string().optional().describe('Cohort make, e.g. "Adria". Use list_camper_makes to resolve names.'),
+        model: z.string().optional().describe("Cohort model."),
+        camperType: z.enum(CAMPER_TYPES).optional().describe("Body type."),
+        fuelType: z.enum(FUEL_TYPES).optional().describe("Fuel type."),
+        transmission: z.enum(TRANSMISSIONS).optional().describe("Gearbox type."),
+        state: z.enum(CAMPER_STATES).optional().describe("brand_new or pre_owned."),
+        yearMin: z.number().int().min(1900).optional().describe("Earliest production year in the cohort."),
+        yearMax: z.number().int().max(2100).optional().describe("Latest production year in the cohort."),
+        mileageMax: z.number().int().nonnegative().optional().describe("Maximum mileage in km."),
+        city: z.string().optional().describe('City name in Polish, e.g. "Wrocław".'),
+        slug: z.string().optional().describe("Sale listing slug to compare against the cohort."),
+        maxSample: z.number().int().min(5).max(500).default(200).describe("Maximum listings to sample for statistics."),
+      }),
+      annotations: READ_ONLY,
+    },
+    (args) => toolResult(() => analyzeCamperPrices(args)),
+  );
+
+  server.registerTool(
+    "find_similar_campers",
+    {
+      title: "Find similar campers",
+      description:
+        "Find sale listings similar to a given one (same market segment, price bracket and specs). " +
+        "Returns compact rows for the alternatives the platform suggests.",
+      inputSchema: z.object({
+        slug: z.string().min(1).describe("Sale listing slug from search results."),
+        limit: z.number().int().min(1).max(20).default(6).describe("Maximum alternatives to return."),
+      }),
+      annotations: READ_ONLY,
+    },
+    (args) => toolResult(() => findSimilarCampers(args)),
+  );
+
+  server.registerTool(
+    "get_rental_reviews",
+    {
+      title: "Get rental reviews",
+      description:
+        "Published customer reviews for a rental listing (id from search results, e.g. rls_...). " +
+        "Returns ratings and review text. Sale listings do not have reviews.",
+      inputSchema: z.object({
+        rentalListingId: z.string().min(1).describe("Rental listing id from search results, e.g. rls_A50UmVqECBDt."),
+        limit: z.number().int().min(1).max(50).default(20).describe("Maximum reviews to return."),
+      }),
+      annotations: READ_ONLY,
+    },
+    (args) => toolResult(() => getRentalReviews(args)),
+  );
+
+  server.registerTool(
     "search_marketplace_listings",
     {
       title: "Search marketplace listings",
@@ -180,7 +249,153 @@ export function createServer() {
     (args) => toolResult(() => getMarketplaceListingDetails(args)),
   );
 
+  server.registerTool(
+    "get_marketplace_seller",
+    {
+      title: "Get marketplace seller",
+      description:
+        "Marketplace seller profile by id (from a marketplace listing's seller): display name, " +
+        "verification and trust badges, ratings and reputation, plus their active offers.",
+      inputSchema: z.object({
+        sellerId: z.string().min(1).describe("Seller public id, e.g. usr_Fz1bpXt90L9Y."),
+        includeListings: z.boolean().default(true).describe("Include the seller's active marketplace listings."),
+      }),
+      annotations: READ_ONLY,
+    },
+    (args) => toolResult(() => getMarketplaceSeller(args)),
+  );
+
+  server.registerTool(
+    "search_wanted_ads",
+    {
+      title: "Search wanted ads",
+      description:
+        "Search marketplace wanted ads (kupię / poszukuję) posted by buyers looking for camper parts " +
+        "and accessories. Supports text, category and subcategory filters.",
+      inputSchema: z.object({
+        query: z.string().optional().describe("Free-text search over title, description, manufacturer and part number."),
+        category: z.string().optional().describe('Category slug, e.g. "appliances", "plumbing_water".'),
+        subcategory: z.string().optional().describe('Subcategory slug, e.g. "toilets", "refrigeration".'),
+        page: z.number().int().min(1).max(1000).default(1).describe("Page number (1-based)."),
+        perPage: z.number().int().min(1).max(50).default(12).describe("Rows per page (1-50)."),
+      }),
+      annotations: READ_ONLY,
+    },
+    (args) => toolResult(() => searchWantedAds(args)),
+  );
+
+  registerPrompts(server);
+
   return server;
+}
+
+function registerPrompts(server) {
+  server.registerPrompt(
+    "social-post",
+    {
+      title: "Social post for a camper",
+      description: "Write a Polish social-media post (Facebook/Instagram) for one camper listing.",
+      argsSchema: z.object({
+        slug: z.string().min(1).describe("Listing slug, e.g. citroen-jumper-ba12fa."),
+        platform: z.enum(["Facebook", "Instagram", "OLX"]).default("Facebook").describe("Target platform."),
+      }),
+    },
+    ({ slug, platform }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text:
+              `Użyj narzędzia get_camper_details dla ogłoszenia o slug "${slug}", a następnie napisz po polsku ` +
+              `chwytliwy post na ${platform} sprzedający tego kampera. Wykorzystaj najważniejsze dane: marka, model, ` +
+              "rocznik, przebieg, cena, wyposażenie i lokalizacja. Dodaj 3-5 trafnych hashtagów i link do ogłoszenia. " +
+              "Nie wymyślaj danych, których nie ma w ogłoszeniu.",
+          },
+        },
+      ],
+    }),
+  );
+
+  server.registerPrompt(
+    "price-check",
+    {
+      title: "Check if a camper price is fair",
+      description: "Compare one listing against the market cohort and give a Polish verdict on its price.",
+      argsSchema: z.object({
+        slug: z.string().min(1).describe("Sale listing slug, e.g. citroen-jumper-ba12fa."),
+      }),
+    },
+    ({ slug }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text:
+              `Najpierw pobierz dane ogłoszenia narzędziem get_camper_details (slug "${slug}"). ` +
+              "Następnie użyj analyze_camper_prices z filtrami pasującymi do tego kampera (marka, typ, rocznik, " +
+              "przebieg; ten sam slug jako punkt odniesienia). Napisz po polsku krótką ocenę ceny: czy jest poniżej, " +
+              "w okolicy czy powyżej mediany rynku, ile wynosi różnica w procentach i na ile wiarygodna jest próbka " +
+              "(sampleSize). Podaj widełki rynkowe (p25-p75).",
+          },
+        },
+      ],
+    }),
+  );
+
+  server.registerPrompt(
+    "compare-campers",
+    {
+      title: "Compare camper listings",
+      description: "Compare 2-4 sale listings side by side and recommend the best fit.",
+      argsSchema: z.object({
+        slugs: z.string().min(1).describe("Comma-separated listing slugs, 2-4 of them."),
+        needs: z.string().optional().describe("Buyer needs, e.g. 'rodzina 2+2, zimowy, automat'."),
+      }),
+    },
+    ({ slugs, needs }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text:
+              `Pobierz szczegóły każdego z tych ogłoszeń narzędziem get_camper_details: ${slugs}. ` +
+              (needs ? `Potrzeby kupującego: ${needs}. ` : "") +
+              "Porównaj je po polsku w tabeli: cena, rocznik, przebieg, silnik i skrzynia, miejsca sypialne, " +
+              "wyposażenie, lokalizacja. Na końcu wskaż rekomendację i uzasadnij ją w 2-3 zdaniach.",
+          },
+        },
+      ],
+    }),
+  );
+
+  server.registerPrompt(
+    "seo-description",
+    {
+      title: "SEO description for a camper",
+      description: "Rewrite a listing's description as an SEO-friendly Polish text.",
+      argsSchema: z.object({
+        slug: z.string().min(1).describe("Listing slug, e.g. citroen-jumper-ba12fa."),
+      }),
+    },
+    ({ slug }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text:
+              `Użyj get_camper_details dla ogłoszenia "${slug}". Na podstawie danych i oryginalnego opisu napisz ` +
+              "po polsku ulepszony opis ogłoszenia: 3 akapity, naturalnie wplecione słowa kluczowe (marka, model, " +
+              "typ kampera, rocznik, cechy), bez emoji i bez danych, których nie ma w ogłoszeniu. Zachowaj wszystkie " +
+              "istotne informacje techniczne i kontaktowe.",
+          },
+        },
+      ],
+    }),
+  );
 }
 
 async function toolResult(run) {

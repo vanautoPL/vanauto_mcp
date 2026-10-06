@@ -6,13 +6,21 @@
 //   VANAUTO_API_URL=http://localhost:3000 npm run smoke
 
 import {
+  analyzeCamperPrices,
+  findSimilarCampers,
   getCamperDetails,
   getMarketStats,
+  getRentalReviews,
   listEquipment,
   listMakes,
   searchCampers,
 } from "./campers.js";
-import { getMarketplaceListingDetails, searchMarketplaceListings } from "./marketplace.js";
+import {
+  getMarketplaceListingDetails,
+  getMarketplaceSeller,
+  searchMarketplaceListings,
+  searchWantedAds,
+} from "./marketplace.js";
 import { apiBaseUrl, siteBaseUrl } from "./api-client.js";
 
 let failures = 0;
@@ -40,7 +48,9 @@ console.log("");
 
 let saleSlug = null;
 let rentalSlug = null;
+let rentalListingId = null;
 let marketplaceSlug = null;
+let marketplaceSellerId = null;
 
 await check("search_campers (sale, text query)", async () => {
   const result = await searchCampers({ segment: "sale", query: "citroen", limit: 5 });
@@ -89,6 +99,7 @@ await check("get_camper_details (rental by slug)", async () => {
   assert(details.segment === "rental", `expected rental segment, got ${details.segment}`);
   assert(details.dailyRates.length > 0, "expected at least one rental price");
   assert(details.url.includes("/wynajem/"), `expected rental URL, got ${details.url}`);
+  rentalListingId = details.listingId;
   const base = details.dailyRates.find((rate) => rate.isBaseRate) ?? details.dailyRates[0];
   return `${base.price} ${base.currency} / ${base.period}`;
 });
@@ -141,7 +152,47 @@ await check("get_marketplace_listing_details", async () => {
   assert(details.listing.slug === marketplaceSlug, "marketplace slug mismatch");
   assert(details.listing.url.includes("/akcesoria/"), "expected marketplace URL");
   assert(details.listing.seller?.displayName, "expected seller display name");
+  marketplaceSellerId = details.listing.seller?.id ?? null;
   return `${details.listing.title} (${details.listing.condition})`;
+});
+
+await check("analyze_camper_prices (cohort + comparison)", async () => {
+  assert(saleSlug, "no sale slug captured from search");
+  const result = await analyzeCamperPrices({ camperType: "van", slug: saleSlug });
+  assert(result.priceStats.sampleSize > 0, "expected a price sample");
+  assert(result.priceStats.median > 0, "expected a median price");
+  assert(result.priceStats.p25 <= result.priceStats.p75, "expected ordered quartiles");
+  assert(result.comparison, "expected listing comparison");
+  assert(typeof result.comparison.vsMedianPercent === "number", "expected deviation from median");
+  return `${result.priceStats.sampleSize} listings, median ${result.priceStats.median} PLN, listing at p${result.comparison.percentile}`;
+});
+
+await check("find_similar_campers", async () => {
+  assert(saleSlug, "no sale slug captured from search");
+  const result = await findSimilarCampers({ slug: saleSlug });
+  assert(Array.isArray(result.results), "expected results array");
+  return `${result.totalCount} similar listings`;
+});
+
+await check("get_rental_reviews", async () => {
+  assert(rentalListingId, "no rental listing id captured");
+  const result = await getRentalReviews({ rentalListingId });
+  assert(Array.isArray(result.reviews), "expected reviews array");
+  return `${result.count} reviews`;
+});
+
+await check("get_marketplace_seller", async () => {
+  assert(marketplaceSellerId, "no marketplace seller id captured");
+  const result = await getMarketplaceSeller({ sellerId: marketplaceSellerId });
+  assert(result.seller.displayName, "expected seller display name");
+  assert(Array.isArray(result.activeListings), "expected active listings");
+  return `${result.seller.displayName}, ${result.activeListings.length} active listings`;
+});
+
+await check("search_wanted_ads", async () => {
+  const result = await searchWantedAds({ perPage: 5 });
+  assert(Array.isArray(result.results), "expected results array");
+  return `${result.totalCount} wanted ads`;
 });
 
 console.log("");

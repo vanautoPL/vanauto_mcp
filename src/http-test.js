@@ -18,8 +18,13 @@ const EXPECTED_TOOLS = [
   "list_camper_makes",
   "list_camper_equipment",
   "get_camper_market_stats",
+  "analyze_camper_prices",
+  "find_similar_campers",
+  "get_rental_reviews",
   "search_marketplace_listings",
   "get_marketplace_listing_details",
+  "get_marketplace_seller",
+  "search_wanted_ads",
 ];
 
 let failed = false;
@@ -37,6 +42,12 @@ try {
   await client.connect(new StreamableHTTPClientTransport(url));
   console.log(`ok   connect - ${url}`);
 
+  const healthResponse = await fetch(new URL("/health", url));
+  assert(healthResponse.ok, `health check returned ${healthResponse.status}`);
+  const health = await healthResponse.json();
+  assert(health.status === "ok", `unexpected health payload: ${JSON.stringify(health)}`);
+  console.log(`ok   /health - ${health.name} ${health.version}`);
+
   const { tools } = await client.listTools();
   const names = tools.map((tool) => tool.name);
   for (const name of EXPECTED_TOOLS) {
@@ -44,6 +55,13 @@ try {
   }
   assert(names.length === EXPECTED_TOOLS.length, `tool count mismatch: ${names.length} vs ${EXPECTED_TOOLS.length}`);
   console.log(`ok   tools/list - ${names.length} tools`);
+
+  const { prompts } = await client.listPrompts();
+  const promptNames = prompts.map((prompt) => prompt.name);
+  for (const name of ["social-post", "price-check", "compare-campers", "seo-description"]) {
+    assert(promptNames.includes(name), `missing prompt ${name}`);
+  }
+  console.log(`ok   prompts/list - ${promptNames.length} prompts`);
 
   const search = await client.callTool({
     name: "search_campers",

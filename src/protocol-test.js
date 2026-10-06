@@ -83,8 +83,13 @@ try {
     "list_camper_makes",
     "list_camper_equipment",
     "get_camper_market_stats",
+    "analyze_camper_prices",
+    "find_similar_campers",
+    "get_rental_reviews",
     "search_marketplace_listings",
     "get_marketplace_listing_details",
+    "get_marketplace_seller",
+    "search_wanted_ads",
   ];
   for (const name of expected) {
     assert(names.includes(name), `missing tool ${name}`);
@@ -112,6 +117,21 @@ try {
   const stats = await request("tools/call", { name: "get_camper_market_stats", arguments: {} });
   assert(stats.result && !stats.result.isError, `get_camper_market_stats failed: ${stats.result?.content?.[0]?.text}`);
   console.log(`ok   tools/call get_camper_market_stats - ${JSON.parse(stats.result.content[0].text).activeSaleListings} active sale listings`);
+
+  const prompts = await request("prompts/list", {});
+  const promptNames = (prompts.result?.prompts ?? []).map((prompt) => prompt.name);
+  const expectedPrompts = ["social-post", "price-check", "compare-campers", "seo-description"];
+  for (const name of expectedPrompts) {
+    assert(promptNames.includes(name), `missing prompt ${name}`);
+  }
+  console.log(`ok   prompts/list - ${promptNames.length} prompts`);
+
+  const prompt = await request("prompts/get", {
+    name: "price-check",
+    arguments: { slug: payload.results[0].slug },
+  });
+  assert(prompt.result?.messages?.length > 0, `prompts/get failed: ${JSON.stringify(prompt.error)}`);
+  console.log(`ok   prompts/get price-check - ${prompt.result.messages.length} message(s)`);
 
   console.log("");
   console.log("protocol test passed");

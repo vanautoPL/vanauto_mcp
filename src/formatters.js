@@ -189,6 +189,25 @@ export function rentalListingDetail(listing = {}, { maxDescriptionChars } = {}) 
   };
 }
 
+export function wantedAdCard(ad = {}) {
+  return {
+    id: ad.id,
+    title: ad.title,
+    category: ad.category ?? null,
+    subcategory: ad.subcategory ?? null,
+    manufacturer: ad.manufacturer ?? null,
+    camperModel: ad.camperModel ?? null,
+    budgetMin: ad.budgetMin != null ? Number(ad.budgetMin) : null,
+    budgetMax: ad.budgetMax != null ? Number(ad.budgetMax) : null,
+    currency: ad.currency ?? "PLN",
+    city: ad.city?.name ?? null,
+    contactName: ad.contactName ?? null,
+    contactPhone: ad.contactPhone ?? null,
+    publishedAt: ad.createdAt ?? null,
+    expiresAt: ad.expiresAt ?? null,
+  };
+}
+
 export function marketplaceListingCard(node = {}) {
   return {
     listingId: node.id,

@@ -1,0 +1,22 @@
+name: Uptime
+
+on:
+  schedule:
+    # Every 6 hours; a failing run notifies the repo owner by email by default.
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Health endpoint
+        run: curl -fsS https://mcp.vanauto.pl/health
+      - name: MCP protocol smoke
+        run: MCP_URL=https://mcp.vanauto.pl/mcp npm run smoke:http

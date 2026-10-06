@@ -5,6 +5,7 @@ listings, rentals and marketplace (akcesoria) offers. It talks to the public
 VanAuto API, so it needs no credentials and cannot change any data.
 
 **Public endpoint:** `https://mcp.vanauto.pl/mcp` (Streamable HTTP, no auth)
+**Health check:** `https://mcp.vanauto.pl/health` (uptime-checked every 6h via GitHub Actions)
 **MCP Registry:** [`pl.vanauto/campers`](https://registry.modelcontextprotocol.io/v0.1/servers?search=pl.vanauto/campers) — discoverable by registry-connected clients.
 
 ## Tools
@@ -13,11 +14,27 @@ VanAuto API, so it needs no credentials and cannot change any data.
 |---|---|
 | `search_campers` | Search active sale or rental listings with filters: text, make, model, camper type, fuel, gearbox, state, price, year, mileage, sleeping places, city; rentals also support availability dates. |
 | `get_camper_details` | Full details for one listing by slug (auto-detects sale vs rental) or a camper spec sheet by `cam_...` id: decoded specs, photos, equipment, contact and links. |
+| `analyze_camper_prices` | Market price stats for a cohort (min/max/avg/median/p25/p75, average by year) and, optionally, how one listing compares (percentile, deviation from median). |
+| `find_similar_campers` | Alternatives the platform suggests for a sale listing. |
 | `list_camper_makes` | All 200+ camper makes with active sale/rental counts, for resolving brand names. |
 | `list_camper_equipment` | The equipment catalog grouped by category. |
 | `get_camper_market_stats` | Current snapshot: active listing counts, campers by body type, makes with inventory. |
+| `get_rental_reviews` | Published customer reviews for a rental listing. |
 | `search_marketplace_listings` | Search marketplace accessories with text, manufacturer, category, condition, compatibility, price, location filters. |
 | `get_marketplace_listing_details` | Full accessory listing with seller info, shipping, photos, related offers. |
+| `get_marketplace_seller` | Seller profile: trust badges, ratings, reputation and active offers. |
+| `search_wanted_ads` | Marketplace wanted ads (buyers looking for parts/accessories). |
+
+## Prompts
+
+Clients that support MCP prompts get one-click flows:
+
+| Prompt | What it does |
+|---|---|
+| `social-post` | Pulls the listing and writes a Polish Facebook/Instagram/OLX post with hashtags. |
+| `price-check` | Compares a listing against its market cohort and gives a Polish verdict on the price. |
+| `compare-campers` | Compares 2-4 listings side by side against buyer needs. |
+| `seo-description` | Rewrites a listing description as an SEO-friendly Polish text. |
 
 Data is served in Polish (as on the site); prices are in PLN. Rental rows
 carry `dailyRates` (per-period rates) rather than a single price.
@@ -141,6 +158,9 @@ rejects duplicate versions.
 
 - **Read-only.** Every call is an HTTP GET against `/public/...`; there is no
   database access and no auth token.
+- **One public surface.** Only `mcp.vanauto.pl` serves the MCP; the
+  `workers.dev` route is disabled so the zone rate-limit rule cannot be
+  bypassed.
 - **Caching.** Catalog endpoints (makes, equipment) are cached in-process for
   an hour; searches and details for two minutes. The API itself also caches
   responses. On Workers, each isolate has its own short-lived instance of that

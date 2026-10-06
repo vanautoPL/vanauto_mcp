@@ -9,7 +9,10 @@
 name = "vanauto-campers-mcp"
 main = "src/worker.js"
 compatibility_date = "2026-10-01"
-workers_dev = true
+
+# Only the custom domain is public. The workers.dev route would bypass the
+# zone-level rate limiting rule for mcp.vanauto.pl, so it stays disabled.
+workers_dev = false
 
 # No secrets: the server only calls the public VanAuto API as an anonymous
 # visitor. The API URL stays overridable for staging/local targets.
