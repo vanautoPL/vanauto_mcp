@@ -74,7 +74,7 @@ Claude Desktop (older builds without native remote support):
 
 ### Local (stdio)
 
-The package is npm-ready as **`vanauto-mcp-campers`**. Once it is published:
+Published on npm as **`vanauto-mcp-campers@0.4.0`** (verified 2026-10-22). Run it with:
 
 ```sh
 npx -y vanauto-mcp-campers
